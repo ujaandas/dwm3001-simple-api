@@ -1,11 +1,4 @@
-#ifndef PBF_H
-#define PBF_H
-
-typedef enum
-{
-  COMPLETE = 0b0,
-  INCOMPLETE = 0b1
-} PacketBoundaryFlag;
+#include "packet/header/fields/pbf.h"
 
 const char *pbf_t_s(PacketBoundaryFlag pbf)
 {
@@ -19,5 +12,3 @@ const char *pbf_t_s(PacketBoundaryFlag pbf)
     return "UNKNOWN";
   }
 }
-
-#endif // PBF_H

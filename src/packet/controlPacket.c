@@ -1,20 +1,4 @@
-#include <string.h>
-#include "header/header.h"
-#include "identifiers/gid.h"
-#include "identifiers/oid.h"
-#include "identifiers/status.h"
-#include "../transport/tty.h"
-
-#define MAX_PAYLOAD_SIZE 255
-
-typedef struct
-{
-  PacketHeader header;
-  GroupIdentifier gid;
-  OpcodeIdentifier oid;
-  uint8_t payload_len;
-  uint8_t payload[MAX_PAYLOAD_SIZE];
-} ControlPacket;
+#include "packet/controlPacket.h"
 
 void print_packet_header(PacketHeader header)
 {

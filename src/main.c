@@ -2,7 +2,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include "transport/tty.h"
-#include "packet/commands.h"
+#include "board/commands.h"
 
 // Define the TTY device path and baud rate
 #define TTY_PATH "/dev/tty.usbmodemCC210983BA011"

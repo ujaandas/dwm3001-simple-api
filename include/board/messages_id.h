@@ -1,6 +1,8 @@
 #ifndef MESSAGES_ID_H_
 #define MESSAGES_ID_H_
 
+#include <cstdint>
+
 // Group Identifier (GID) Definitions
 #define GID_UCI_CORE 0x0
 #define GID_UWB_SESSION 0x1

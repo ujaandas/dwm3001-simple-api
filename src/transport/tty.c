@@ -1,16 +1,8 @@
-#ifndef TTY_H
-#define TTY_H
-
-#include <stdint.h>
-#include <termios.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdio.h>
+#include "transport/tty.h"
 
 int tty_fd = -1;
 
-// Function definitions
-static int tty_init(const char *tty_path, uint32_t baud_rate)
+int tty_init(const char *tty_path, uint32_t baud_rate)
 {
   struct termios options;
 
@@ -47,7 +39,7 @@ static int tty_init(const char *tty_path, uint32_t baud_rate)
   return 0; // Success
 }
 
-static int tty_send(const uint8_t *data, size_t len)
+int tty_send(const uint8_t *data, size_t len)
 {
   if (tty_fd == -1)
   {
@@ -66,7 +58,7 @@ static int tty_send(const uint8_t *data, size_t len)
   return bytes_written; // Return number of bytes sent
 }
 
-static int tty_rcv(uint8_t *buffer, size_t len)
+int tty_rcv(uint8_t *buffer, size_t len)
 {
   if (tty_fd == -1)
   {
@@ -85,7 +77,7 @@ static int tty_rcv(uint8_t *buffer, size_t len)
   return bytes_read; // Return number of bytes received
 }
 
-static int tty_close()
+int tty_close()
 {
   if (tty_fd != -1)
   {
@@ -95,5 +87,3 @@ static int tty_close()
   }
   return -1; // Failure
 }
-
-#endif // TTY_H

@@ -1,6 +1,4 @@
-#include "../transport/tty.h"
-#include "controlPacket.h"
-#include "notifPacket.h"
+#include "board/commands.h"
 
 uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
