@@ -44,7 +44,7 @@ const char *get_gid_description(uint8_t gid)
   case GID_UWB_RANGING:
     return "UWB Ranging";
   default:
-    return "Unknown GID";
+    return "";
   }
 }
 
@@ -71,7 +71,7 @@ const char *get_oid_description(uint8_t gid, uint8_t oid)
     case CORE_GENERIC_ERROR:
       return "Generic Error";
     default:
-      return "Unknown OID";
+      return "";
     }
   case GID_UWB_SESSION:
     switch (oid)
@@ -93,7 +93,7 @@ const char *get_oid_description(uint8_t gid, uint8_t oid)
     case SESSION_UPDATE_CONTROLLER:
       return "Update Controller";
     default:
-      return "Unknown OID";
+      return "";
     }
   case GID_UWB_RANGING:
     switch (oid)
@@ -105,10 +105,10 @@ const char *get_oid_description(uint8_t gid, uint8_t oid)
     case RFU:
       return "RFU";
     default:
-      return "Unknown OID";
+      return "";
     }
   default:
-    return "Unknown OID";
+    return "";
   }
 }
 

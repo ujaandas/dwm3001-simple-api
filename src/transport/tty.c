@@ -1,21 +1,19 @@
 #include "transport/tty.h"
 
-int tty_fd = -1;
-
-int tty_init(const char *tty_path, uint32_t baud_rate)
+int tty_init(int *tty_fd, const char *tty_path, uint32_t baud_rate)
 {
   struct termios options;
 
   // Open the TTY port
-  tty_fd = open(tty_path, O_RDWR | O_NOCTTY | O_NDELAY);
-  if (tty_fd == -1)
+  *tty_fd = open(tty_path, O_RDWR | O_NOCTTY | O_NDELAY);
+  if (*tty_fd == -1)
   {
     perror("      tty: Unable to open TTY");
     return -1;
   }
 
   // Get the current options for the port
-  tcgetattr(tty_fd, &options);
+  tcgetattr(*tty_fd, &options);
 
   // Set the baud rate
   cfsetispeed(&options, baud_rate);
@@ -31,15 +29,15 @@ int tty_init(const char *tty_path, uint32_t baud_rate)
   options.c_cflag |= (CLOCAL | CREAD);
 
   // Apply the settings
-  tcsetattr(tty_fd, TCSANOW, &options);
+  tcsetattr(*tty_fd, TCSANOW, &options);
 
   // Set the port to blocking mode
-  fcntl(tty_fd, F_SETFL, 0);
+  fcntl(*tty_fd, F_SETFL, 0);
 
   return 0; // Success
 }
 
-int tty_send(const uint8_t *data, size_t len)
+int tty_send(int tty_fd, const uint8_t *data, size_t len)
 {
   if (tty_fd == -1)
   {
@@ -58,7 +56,7 @@ int tty_send(const uint8_t *data, size_t len)
   return bytes_written; // Return number of bytes sent
 }
 
-int tty_rcv(uint8_t *buffer, size_t len)
+int tty_rcv(int tty_fd, uint8_t *buffer, size_t len)
 {
   if (tty_fd == -1)
   {
@@ -77,7 +75,7 @@ int tty_rcv(uint8_t *buffer, size_t len)
   return bytes_read; // Return number of bytes received
 }
 
-int tty_close()
+int tty_close(int tty_fd)
 {
   if (tty_fd != -1)
   {

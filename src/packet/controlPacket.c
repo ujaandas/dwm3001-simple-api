@@ -19,7 +19,7 @@ ControlPacket create_packet(MessageType mt, PacketBoundaryFlag pbf, GroupIdentif
 }
 
 // Function to send a ControlPackets
-int send_packet(ControlPacket packet)
+int send_packet(int tty_fd, ControlPacket packet)
 {
   printf("    pkt: Sending packet...\n");
   uint8_t buffer[4 + packet.payload_len];
@@ -41,15 +41,15 @@ int send_packet(ControlPacket packet)
   // Octet 4 to 4 + payload length: payload
   memcpy(buffer + 4, packet.payload, packet.payload_len);
 
-  return tty_send(buffer, sizeof(buffer));
+  return tty_send(tty_fd, buffer, sizeof(buffer));
 }
 
-ControlPacket rcv_packet(uint8_t *buffer, size_t buffer_size)
+ControlPacket rcv_packet(int tty_fd, uint8_t *buffer, size_t buffer_size)
 {
   ControlPacket packet;
 
   printf("    pkt: Receiving response...\n");
-  int bytes_read = tty_rcv(buffer, buffer_size);
+  int bytes_read = tty_rcv(tty_fd, buffer, buffer_size);
   if (bytes_read < 4)
   {
     printf("    pkt: Failed to receive a valid response header\n");

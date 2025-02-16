@@ -101,7 +101,7 @@ const char *status_to_s(enum UciStatus status)
     return ("Reset due to brownout condition.");
     break;
   default:
-    return ("Unknown status code");
+    return ("");
     break;
   }
 }

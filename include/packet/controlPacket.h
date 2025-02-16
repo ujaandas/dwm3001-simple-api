@@ -8,7 +8,7 @@
 #include "identifiers/status.h"
 #include "transport/tty.h"
 
-#define MAX_PAYLOAD_SIZE 255
+#define MAX_PAYLOAD_SIZE 511
 
 typedef struct
 {
@@ -24,8 +24,8 @@ void print_packet_header(PacketHeader header);
 ControlPacket create_packet(MessageType mt, PacketBoundaryFlag pbf, GroupIdentifier gid, OpcodeIdentifier oid, uint8_t *payload, uint8_t payload_len);
 
 // Function to send a ControlPackets
-int send_packet(ControlPacket packet);
+int send_packet(int tty_fd, ControlPacket packet);
 
-ControlPacket rcv_packet(uint8_t *buffer, size_t buffer_size);
+ControlPacket rcv_packet(int tty_fd, uint8_t *buffer, size_t buffer_size);
 
 #endif // CTRL_PKT_H

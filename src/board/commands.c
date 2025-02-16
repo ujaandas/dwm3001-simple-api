@@ -2,19 +2,19 @@
 
 uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
-int reset_device()
+int reset_device(int tty_fd)
 {
   uint8_t temp_payload = REASON_RESET_POWER_CYCLE;
   ControlPacket packet = create_packet(COMMAND, COMPLETE, CORE, CORE_DEVICE_RESET, &temp_payload, 1);
 
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(packet) < 0)
+  if (send_packet(tty_fd, packet) < 0)
   {
     return -1;
   }
 
   // Receive the response
-  ControlPacket rcvd_packet = rcv_packet(buffer, sizeof(buffer));
+  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
   if (rcvd_packet.gid != CORE || rcvd_packet.oid != CORE_DEVICE_RESET || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -23,19 +23,19 @@ int reset_device()
   return 1;
 }
 
-int get_device_info()
+int get_device_info(int tty_fd)
 {
   // Create the CORE_GET_DEVICE_INFO packet
   ControlPacket packet = create_packet(COMMAND, COMPLETE, CORE, CORE_GET_DEVICE_INFO, NULL, 0);
 
   // Send the CORE_GET_DEVICE_INFO command
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(packet) < 0)
+  if (send_packet(tty_fd, packet) < 0)
   {
     return -1; // Failed to send command
   }
 
-  ControlPacket rcvd_packet = rcv_packet(buffer, sizeof(buffer));
+  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
   if (rcvd_packet.gid) // if its 0
   {
     return -2; // Failed to receive valid response
@@ -95,7 +95,7 @@ int get_device_info()
   return 1; // Success
 }
 
-int init_uwb_session(uint32_t sid, uint8_t stype)
+int init_uwb_session(int tty_fd, uint32_t sid, uint8_t stype)
 {
   // Create the SESSION_INIT packet
   uint8_t session_init_payload[5];
@@ -109,7 +109,7 @@ int init_uwb_session(uint32_t sid, uint8_t stype)
 
   // Send the SESSION_INIT command
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(packet) < 0)
+  if (send_packet(tty_fd, packet) < 0)
   {
     return -1; // Failed to send command
   }
@@ -117,7 +117,7 @@ int init_uwb_session(uint32_t sid, uint8_t stype)
   sleep(1);
 
   // Receive the response
-  ControlPacket rcvd_packet = rcv_packet(buffer, sizeof(buffer));
+  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_INIT || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2; // Failed to receive valid response
@@ -126,17 +126,70 @@ int init_uwb_session(uint32_t sid, uint8_t stype)
   return 1; // Success
 }
 
-int set_uwb_session_parameters(uint32_t sid, uint8_t stype)
+int set_uwb_controller(int tty_fd, uint32_t sid)
 {
   uint8_t session_params[] = {
-      0x00, 0x01,       // DeviceType: Controller (0x00), DeviceRole: Initiator (session_type)
-      0x06, 0x00, 0x01, // DeviceMacAddress: 0x00000001
-      0x05, 0x01,       // NumberOfControlees: 1
-      0x07, 0x00, 0x02, // DstMacAddress: 0x00000002
-      0x04, 0x09,       // ChannelNumber: Channel 9
+      // tag, value
+      0x00, 0x01,       // DeviceType: Controller (0x00 is tag for dev type)
+      0x11, 0x01,       // DeviceRole: Responder (0x11 is tag for dev role)
+      0x06, 0x00, 0x00, // DeviceMacAddress: 0x0000 (0x06 is tag for dev mac addr.)
+      0x05, 0x01,       // NumberOfControlees: 1 (0x05 is tag for controllee #)
+      0x07, 0x01, 0x00, // DstMacAddress: 0x0001 (0x07 is tag for dst mac addr.)
   };
   uint8_t session_params_len = sizeof(session_params);
+  return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
+}
 
+int set_uwb_controlee(int tty_fd, uint32_t sid)
+{
+  uint8_t session_params[] = {
+      0x00, 0x00,       // DeviceType: Controlee (0x00)
+      0x11, 0x00,       // DeviceRole: Initiator
+      0x06, 0x01, 0x00, // DeviceMacAddress: 0x0001
+      0x07, 0x00, 0x00, // DstMacAddress: 0x0000
+  };
+  uint8_t session_params_len = sizeof(session_params);
+  return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
+}
+
+int set_uwb_misc_1(int tty_fd, uint32_t sid)
+{
+  uint8_t session_params[] = {
+      // tag, value
+      0x2E, 0x0B,                               // ResultReportConfig: 0x0B (0x2E is the tag for result report config)
+      0x27, 0x07, 0x08,                         // VendorId: 0x0708 (0x27 is the tag for vendor ID)
+      0x28, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // StaticStsIv: 0x060504030201 (0x28 is the tag for Static STS IV)
+      0x0D, 0x01,                               // AoaResultReq: 1 (0x0D is the tag for AoA result request)
+      0x2B, 0xE8, 0x03, 0x00, 0x00,             // UwbInitiationTime: 1000 (0x2B is the tag for UWB initiation time)
+      0x01, 0x02,                               // RangingRoundUsage: 2 (0x01 is the tag for ranging round usage)
+      0x04, 0x09,                               // ChannelNumber: 9 (0x04 is the tag for channel number)
+      0x14, 0x09                                // PreambleCodeIndex: 9 (0x14 is the tag for preamble code index)
+  };
+  uint8_t session_params_len = sizeof(session_params);
+  return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
+}
+
+int set_uwb_misc_2(int tty_fd, uint32_t sid)
+{
+  uint8_t session_params[] = {
+      // tag, value
+      0x12, 0x03,                   // RframeConfig: 3 (0x12 is the tag for RFrame config)
+      0x15, 0x02,                   // SfdId: 2 (0x15 is the tag for SFD ID)
+      0x08, 0x60, 0x09,             // SlotDuration: 2400 (0x08 is the tag for slot duration)
+      0x09, 0xC8, 0x00, 0x00, 0x00, // RangingInterval: 200 (0x09 is the tag for ranging interval)
+      0x1B, 0x19,                   // SlotsPerRr: 25 (0x1B is the tag for slots per ranging round)
+      0x03, 0x00,                   // MultiNodeMode: 0 (0x03 is the tag for multi-node mode)
+      0x2C, 0x00,                   // HoppingMode: 0 (0x2C is the tag for hopping mode)
+      0x36, 0x01,                   // RssiReporting: 1 (0x36 is the tag for RSSI reporting)
+      0xE8, 0x01,                   // EnableDiagnostics: 1 (0xE8 is the tag for enabling diagnostics)
+      0xE9, 0x01                    // DiagsFrameReportsFields: 1 (0xE9 is the tag for diagnostics frame report fields)
+  };
+  uint8_t session_params_len = sizeof(session_params);
+  return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
+}
+
+int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[], uint8_t session_params_len)
+{
   uint8_t payload[MAX_PAYLOAD_SIZE];
   int offset = 0;
 
@@ -151,12 +204,12 @@ int set_uwb_session_parameters(uint32_t sid, uint8_t stype)
   }
 
   ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_SET_APP_CONFIG, payload, offset);
-  if (send_packet(packet) < 0)
+  if (send_packet(tty_fd, packet) < 0)
   {
     return -1;
   }
 
-  ControlPacket rcvd_packet = rcv_packet(buffer, sizeof(buffer));
+  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_SET_APP_CONFIG || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -165,7 +218,7 @@ int set_uwb_session_parameters(uint32_t sid, uint8_t stype)
   return 1;
 }
 
-int get_uwb_session_parameters(uint32_t sid)
+int get_uwb_session_parameters(int tty_fd, uint32_t sid)
 {
   uint8_t payload[4]; // 4 bytes for session ID
   int offset = 0;
@@ -180,14 +233,14 @@ int get_uwb_session_parameters(uint32_t sid)
   ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_GET_APP_CONFIG, payload, offset);
 
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(packet) < 0)
+  if (send_packet(tty_fd, packet) < 0)
   {
     printf("  cmd: Failed to send SESSION_GET_APP_CONFIG command.\n");
     return -1; // Failed to send command
   }
 
   // Receive the response
-  ControlPacket rcvd_packet = rcv_packet(buffer, sizeof(buffer));
+  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_GET_APP_CONFIG)
   {
     printf("  cmd: Unexpected response received: GID: 0x%02x, OID: 0x%02x\n", rcvd_packet.gid, rcvd_packet.oid);
@@ -229,7 +282,7 @@ int get_uwb_session_parameters(uint32_t sid)
   return 1; // Success
 }
 
-int start_uwb_ranging_session(uint32_t session_id)
+int start_uwb_ranging_session(int tty_fd, uint32_t session_id)
 {
   uint8_t payload[4];
   payload[0] = (uint8_t)(session_id & 0xFF);
@@ -240,12 +293,12 @@ int start_uwb_ranging_session(uint32_t session_id)
   ControlPacket packet = create_packet(COMMAND, COMPLETE, RANGING, RANGE_START, payload, 4);
 
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(packet) < 0)
+  if (send_packet(tty_fd, packet) < 0)
   {
     return -1;
   }
 
-  ControlPacket rcvd_packet = rcv_packet(buffer, sizeof(buffer));
+  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
   if (rcvd_packet.gid != RANGING || rcvd_packet.oid != RANGE_START || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -254,7 +307,7 @@ int start_uwb_ranging_session(uint32_t session_id)
   return 1;
 }
 
-int stop_uwb_ranging_session(uint32_t sid)
+int stop_uwb_ranging_session(int tty_fd, uint32_t sid)
 {
   uint8_t payload[4];
   payload[0] = (uint8_t)(sid & 0xFF);
@@ -265,12 +318,12 @@ int stop_uwb_ranging_session(uint32_t sid)
   ControlPacket packet = create_packet(COMMAND, COMPLETE, RANGING, RANGE_STOP, payload, 4);
 
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(packet) < 0)
+  if (send_packet(tty_fd, packet) < 0)
   {
     return -1;
   }
 
-  ControlPacket rcvd_packet = rcv_packet(buffer, sizeof(buffer));
+  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != RANGE_STOP || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -279,7 +332,7 @@ int stop_uwb_ranging_session(uint32_t sid)
   return 1;
 }
 
-int deinit_uwb_session(uint32_t sid)
+int deinit_uwb_session(int tty_fd, uint32_t sid)
 {
   uint8_t payload[4];
   payload[0] = (uint8_t)(sid & 0xFF);
@@ -290,12 +343,12 @@ int deinit_uwb_session(uint32_t sid)
   ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_DEINIT, payload, 4);
 
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(packet) < 0)
+  if (send_packet(tty_fd, packet) < 0)
   {
     return -1;
   }
 
-  ControlPacket rcvd_packet = rcv_packet(buffer, sizeof(buffer));
+  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_DEINIT || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -304,12 +357,12 @@ int deinit_uwb_session(uint32_t sid)
   return 1;
 }
 
-void receive_process_notif()
+void receive_process_notif(int tty_fd)
 {
   while (1) // Loop to continuously receive and process notifications
   {
     sleep(3);
-    ControlPacket rcvd_packet = rcv_packet(buffer, sizeof(buffer));
+    ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
     if (rcvd_packet.gid != RANGING || rcvd_packet.oid != RANGE_START || rcvd_packet.payload[0] != STATUS_OK)
     {
       return;
@@ -332,10 +385,10 @@ void receive_process_notif()
   }
 }
 
-void gtfo(uint32_t sid)
+void gtfo(int tty_fd, uint32_t sid)
 {
   printf("  cmd: OH SHIT OH SHIT OH SHIT\n");
-  stop_uwb_ranging_session(sid);
-  deinit_uwb_session(sid);
+  stop_uwb_ranging_session(tty_fd, sid);
+  deinit_uwb_session(tty_fd, sid);
   sleep(1);
 }
