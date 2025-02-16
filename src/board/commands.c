@@ -80,10 +80,12 @@ int get_device_info()
   uint8_t aoa_cap = rcvd_packet.payload[offset++];
 
   // print all info
+  printf("  cmd: Status: %2sx\n", status_to_s(status));
   printf("  cmd: UCI Ver: 0x%04X (%d)\n", uci_ver, uci_ver);
   printf("  cmd: MAC Ver: 0x%04X (%d)\n", mac_ver, mac_ver);
   printf("  cmd: Physical Ver: 0x%04X (%d)\n", phy_ver, phy_ver);
   printf("  cmd: Test Ver: 0x%04X (%d)\n", test_ver, test_ver);
+  printf("  cmd: Vendor Information Length: 0x%04X\n", v_info_len);
   printf("  cmd: Device ID: 0x%08X (%d)\n", device_id, device_id);
   printf("  cmd: Part ID: 0x%08X (%d)\n", part_id, part_id);
   printf("  cmd: Firmware Ver: 0x%06X (%d)\n", firmware_ver, firmware_ver);

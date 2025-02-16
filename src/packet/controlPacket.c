@@ -53,6 +53,7 @@ ControlPacket rcv_packet(uint8_t *buffer, size_t buffer_size)
   if (bytes_read < 4)
   {
     printf("    pkt: Failed to receive a valid response header\n");
+    packet = create_packet(NOTIF, COMPLETE, 0x0, 0x0, NULL, 0);
     return packet; // Failed to receive valid response
   }
 
