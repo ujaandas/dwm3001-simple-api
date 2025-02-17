@@ -2,14 +2,16 @@
 #define COMMANDS_H
 
 #include "transport/tty.h"
-#include "packet/controlPacket.h"
-#include "packet/notifPacket.h"
+#include "packet/packet.h"
+#include "packet/notif.h"
 
 extern uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
 int *init_payload(uint8_t *buf, uint32_t sid);
 
-int send_n_receive(int tty_fd, ControlPacket packet, ControlPacket *rcvd_packet);
+int *create_payload(uint8_t *buf, uint32_t sid, uint8_t payload_extra[], uint8_t payload_extra_len);
+
+int send_n_receive(int tty_fd, Packet packet, Packet *rcvd_packet);
 
 int reset_device(int tty_fd);
 

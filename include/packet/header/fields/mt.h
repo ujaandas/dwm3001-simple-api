@@ -8,6 +8,19 @@ typedef enum
   NOTIF = 0b011
 } MessageType;
 
-const char *mt_t_s(MessageType mt);
+static const char *mt_t_s(MessageType mt)
+{
+  switch (mt)
+  {
+  case COMMAND:
+    return "COMMAND";
+  case RESPONSE:
+    return "RESPONSE";
+  case NOTIF:
+    return "NOTIF";
+  default:
+    return "UNKNOWN";
+  }
+}
 
 #endif // MT_H

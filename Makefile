@@ -12,12 +12,7 @@ SRC_FILES = \
     $(SRC_DIR)/main.c \
     $(SRC_DIR)/transport/tty.c \
     $(SRC_DIR)/board/commands.c \
-    $(SRC_DIR)/packet/controlPacket.c \
-    $(SRC_DIR)/packet/identifiers/gid.c \
-    $(SRC_DIR)/packet/identifiers/oid.c \
-    $(SRC_DIR)/packet/fields/mt.c \
-    $(SRC_DIR)/packet/fields/pbf.c \
-    $(SRC_DIR)/packet/identifiers/status.c
+    $(SRC_DIR)/packet/packet.c \
 
 # Default target
 all: $(TARGET)

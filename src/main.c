@@ -19,6 +19,7 @@ void handle_sigint(int sig)
 {
   gtfo(tty_fd_1, SESSION_ID);
   gtfo(tty_fd_2, SESSION_ID);
+  sleep(5);
   exit(getpid());
 }
 

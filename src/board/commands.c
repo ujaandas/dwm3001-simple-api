@@ -1,62 +1,19 @@
 #include "board/commands.h"
 #include "board/device_tags.h"
 
-int *init_payload(uint8_t *buf, uint32_t sid)
-{
-  uint8_t init_payload[4];
-  for (int i = 0; i < 4; i++)
-  {
-    init_payload[i] = (uint8_t)((sid >> 8 * i) & 0xFF);
-    // shift by 0, then 8, then 16... and mask to append
-  }
-
-  return memcpy(buf, init_payload, 4);
-}
-
-int *create_payload(uint8_t *buf, uint32_t sid, uint8_t payload_extra[], uint8_t payload_extra_len)
-{
-  int *ret = init_payload(buf, sid);
-  if (!ret)
-  {
-    return ret;
-  }
-  return memcpy(buf, payload_extra + 4, payload_extra_len);
-}
-
-int send_n_receive(int tty_fd, ControlPacket packet, ControlPacket *rcv_pkt)
-{
-  // Send the SESSION_INIT command
-  printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(tty_fd, packet) < 0)
-  {
-    return -1; // Failed to send command
-  }
-
-  sleep(1);
-
-  // Receive the response
-  *rcv_pkt = rcv_packet(tty_fd);
-  if (rcv_pkt->gid != packet.gid || rcv_pkt->oid != packet.oid || rcv_pkt->payload[0] != STATUS_OK)
-  {
-    return -2; // Failed to receive valid response
-  }
-
-  return 1; // Success
-}
-
 int reset_device(int tty_fd)
 {
-  uint8_t temp_payload = REASON_RESET_POWER_CYCLE;
-  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, CORE, CORE_DEVICE_RESET, &temp_payload, 1);
-  ControlPacket rcv_pkt;
+  uint8_t payload = REASON_RESET_POWER_CYCLE;
+  Packet send_pkt = create_packet(CommandHeader, GID_CORE, CORE_DEVICE_RESET, &payload);
+  Packet rcv_pkt;
   return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
 
 int get_device_info(int tty_fd)
 {
   // Create the CORE_GET_DEVICE_INFO packet
-  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, CORE, CORE_GET_DEVICE_INFO, NULL, 0);
-  ControlPacket rcv_pkt;
+  Packet send_pkt = create_packet(CommandHeader, GID_CORE, CORE_GET_DEVICE_INFO, NULL);
+  Packet rcv_pkt;
 
   uint8_t ret = send_n_receive(tty_fd, send_pkt, &rcv_pkt);
   if (!ret)
@@ -124,8 +81,8 @@ int init_uwb_session(int tty_fd, uint32_t sid, uint8_t stype)
   uint8_t payload[5];
   create_payload(payload, sid, &stype, 1);
 
-  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_INIT, payload, 5);
-  ControlPacket rcv_pkt;
+  Packet send_pkt = create_packet(CommandHeader, GID_SESSION, SESSION_INIT, payload);
+  Packet rcv_pkt;
 
   return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
@@ -163,11 +120,11 @@ int set_uwb_controlee(int tty_fd, uint32_t sid)
 
 int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[], uint8_t session_params_len)
 {
-  uint8_t payload[MAX_PAYLOAD_SIZE];
+  uint8_t payload[session_params_len + 4];
   create_payload(payload, sid, session_params, session_params_len);
 
-  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_SET_APP_CONFIG, payload, session_params_len + 4);
-  ControlPacket rcv_pkt;
+  Packet send_pkt = create_packet(CommandHeader, GID_SESSION, SESSION_SET_APP_CONFIG, payload);
+  Packet rcv_pkt;
 
   return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
@@ -177,8 +134,8 @@ int start_uwb_ranging_session(int tty_fd, uint32_t sid)
   uint8_t payload[4];
   create_payload(payload, sid, NULL, 0);
 
-  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, RANGING, RANGE_START, payload, 4);
-  ControlPacket rcv_pkt;
+  Packet send_pkt = create_packet(CommandHeader, GID_RANGING, RANGE_START, payload);
+  Packet rcv_pkt;
 
   return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
@@ -188,8 +145,8 @@ int stop_uwb_ranging_session(int tty_fd, uint32_t sid)
   uint8_t payload[4];
   create_payload(payload, sid, NULL, 0);
 
-  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, RANGING, RANGE_STOP, payload, 4);
-  ControlPacket rcv_pkt;
+  Packet send_pkt = create_packet(CommandHeader, GID_RANGING, RANGE_STOP, payload);
+  Packet rcv_pkt;
 
   return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
@@ -199,8 +156,8 @@ int deinit_uwb_session(int tty_fd, uint32_t sid)
   uint8_t payload[4];
   create_payload(payload, sid, NULL, 0);
 
-  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_DEINIT, payload, 4);
-  ControlPacket rcv_pkt;
+  Packet send_pkt = create_packet(CommandHeader, GID_SESSION, SESSION_DEINIT, payload);
+  Packet rcv_pkt;
   return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
 
@@ -210,7 +167,8 @@ void receive_process_notif(int tty_fd)
   {
     sleep(1);
     printf("\n\n\n");
-    ControlPacket rcv_pkt = rcv_packet(tty_fd);
+    Packet rcv_pkt;
+    rcv_packet(tty_fd, &rcv_pkt);
     print_packet_header(rcv_pkt.header);
     printf("    pkt: GID: %s (0x%04X)\n", gid_t_s(rcv_pkt.gid), rcv_pkt.gid);
     printf("    pkt: OID: %s (0x%04X)\n", oid_t_s(rcv_pkt.gid, rcv_pkt.oid), rcv_pkt.oid);
