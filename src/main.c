@@ -167,14 +167,7 @@ int main()
   sleep(3);
 
   printf("\n -- Receiving UWB notifications... -- \n");
-  receive_process_notif(tty_fd_1);
+  receive_process_notif(tty_fd_2);
 
-  printf("\n --- OK OK OK OK --- \n");
-  gtfo(tty_fd_1, SESSION_ID);
-  gtfo(tty_fd_2, SESSION_ID);
-
-  // Close the TTY port
-  tty_close(tty_fd_1);
-  tty_close(tty_fd_2);
   return 1; // Success
 }

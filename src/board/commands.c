@@ -367,7 +367,7 @@ void receive_process_notif(int tty_fd)
   while (1) // Loop to continuously receive and process notifications
   {
     sleep(3);
-    print("\n\n\n");
+    printf("\n\n\n");
     ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
     print_packet_header(rcvd_packet.header);
     printf("    pkt: GID: %s (0x%04X)\n", gid_t_s(rcvd_packet.gid), rcvd_packet.gid);
