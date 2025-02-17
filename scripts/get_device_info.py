@@ -28,7 +28,7 @@ def receive_data(ser):
     return header + payload
 
 def main():
-    port = "/dev/tty.usbmodemCC210983BA011"  # Replace with your TTY port
+    port = "/dev/tty.usbmodemCC210983BA011" 
     baudrate = 115200
 
     # Initialize serial port

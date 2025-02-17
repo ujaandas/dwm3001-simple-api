@@ -2,6 +2,17 @@
 
 uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
+int *init_payload(uint8_t *buf, uint32_t sid)
+{
+  uint8_t init_payload[4];
+  init_payload[0] = (uint8_t)(sid & 0xFF);
+  init_payload[1] = (uint8_t)((sid >> 8) & 0xFF);
+  init_payload[2] = (uint8_t)((sid >> 16) & 0xFF);
+  init_payload[3] = (uint8_t)((sid >> 24) & 0xFF);
+
+  return memcpy(buf, init_payload, 4);
+}
+
 int reset_device(int tty_fd)
 {
   uint8_t temp_payload = REASON_RESET_POWER_CYCLE;
@@ -98,14 +109,11 @@ int get_device_info(int tty_fd)
 int init_uwb_session(int tty_fd, uint32_t sid, uint8_t stype)
 {
   // Create the SESSION_INIT packet
-  uint8_t session_init_payload[5];
-  session_init_payload[0] = (uint8_t)(sid & 0xFF);
-  session_init_payload[1] = (uint8_t)((sid >> 8) & 0xFF);
-  session_init_payload[2] = (uint8_t)((sid >> 16) & 0xFF);
-  session_init_payload[3] = (uint8_t)((sid >> 24) & 0xFF);
-  session_init_payload[4] = stype;
+  uint8_t payload[5];
+  init_payload(payload, sid);
+  payload[4] = stype;
 
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_INIT, session_init_payload, 5);
+  ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_INIT, payload, 5);
 
   // Send the SESSION_INIT command
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
@@ -196,16 +204,12 @@ int set_uwb_controlee(int tty_fd, uint32_t sid)
 int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[], uint8_t session_params_len)
 {
   uint8_t payload[MAX_PAYLOAD_SIZE];
-  int offset = 0;
+  init_payload(payload, sid);
 
-  payload[offset++] = (uint8_t)(sid & 0xFF);
-  payload[offset++] = (uint8_t)((sid >> 8) & 0xFF);
-  payload[offset++] = (uint8_t)((sid >> 16) & 0xFF);
-  payload[offset++] = (uint8_t)((sid >> 24) & 0xFF);
-
-  for (int i = 0; i < session_params_len; i++)
+  int offset;
+  for (offset = 4; offset < session_params_len; offset++)
   {
-    payload[offset++] = session_params[i];
+    payload[offset] = session_params[offset];
   }
 
   ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_SET_APP_CONFIG, payload, offset);
@@ -225,17 +229,11 @@ int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[
 
 int get_uwb_session_parameters(int tty_fd, uint32_t sid)
 {
-  uint8_t payload[4]; // 4 bytes for session ID
-  int offset = 0;
-
-  // Encode the session ID
-  payload[offset++] = (uint8_t)(sid & 0xFF);
-  payload[offset++] = (uint8_t)((sid >> 8) & 0xFF);
-  payload[offset++] = (uint8_t)((sid >> 16) & 0xFF);
-  payload[offset++] = (uint8_t)((sid >> 24) & 0xFF);
+  uint8_t payload[4];
+  init_payload(payload, sid);
 
   // Create the packet
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_GET_APP_CONFIG, payload, offset);
+  ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_GET_APP_CONFIG, payload, 4);
 
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
   if (send_packet(tty_fd, packet) < 0)
@@ -290,10 +288,7 @@ int get_uwb_session_parameters(int tty_fd, uint32_t sid)
 int start_uwb_ranging_session(int tty_fd, uint32_t sid)
 {
   uint8_t payload[4];
-  payload[0] = (uint8_t)(sid & 0xFF);
-  payload[1] = (uint8_t)((sid >> 8) & 0xFF);
-  payload[2] = (uint8_t)((sid >> 16) & 0xFF);
-  payload[3] = (uint8_t)((sid >> 24) & 0xFF);
+  init_payload(payload, sid);
 
   ControlPacket packet = create_packet(COMMAND, COMPLETE, RANGING, RANGE_START, payload, 4);
 
@@ -315,10 +310,7 @@ int start_uwb_ranging_session(int tty_fd, uint32_t sid)
 int stop_uwb_ranging_session(int tty_fd, uint32_t sid)
 {
   uint8_t payload[4];
-  payload[0] = (uint8_t)(sid & 0xFF);
-  payload[1] = (uint8_t)((sid >> 8) & 0xFF);
-  payload[2] = (uint8_t)((sid >> 16) & 0xFF);
-  payload[3] = (uint8_t)((sid >> 24) & 0xFF);
+  init_payload(payload, sid);
 
   ControlPacket packet = create_packet(COMMAND, COMPLETE, RANGING, RANGE_STOP, payload, 4);
 
@@ -340,10 +332,7 @@ int stop_uwb_ranging_session(int tty_fd, uint32_t sid)
 int deinit_uwb_session(int tty_fd, uint32_t sid)
 {
   uint8_t payload[4];
-  payload[0] = (uint8_t)(sid & 0xFF);
-  payload[1] = (uint8_t)((sid >> 8) & 0xFF);
-  payload[2] = (uint8_t)((sid >> 16) & 0xFF);
-  payload[3] = (uint8_t)((sid >> 24) & 0xFF);
+  init_payload(payload, sid);
 
   ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_DEINIT, payload, 4);
 
@@ -366,25 +355,46 @@ void receive_process_notif(int tty_fd)
 {
   while (1) // Loop to continuously receive and process notifications
   {
-    sleep(3);
-    print("\n\n\n");
+    // sleep(2);
+    printf("\n\n\n");
     ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
     print_packet_header(rcvd_packet.header);
     printf("    pkt: GID: %s (0x%04X)\n", gid_t_s(rcvd_packet.gid), rcvd_packet.gid);
     printf("    pkt: OID: %s (0x%04X)\n", oid_t_s(rcvd_packet.gid, rcvd_packet.oid), rcvd_packet.oid);
 
-    // // Process the payload
-    // NotificationPacket rangeData = parse_notif(rcvd_packet.payload);
+    // Check if the packet is a ranging data notification
+    if (rcvd_packet.gid && rcvd_packet.oid)
+    {
+      int offset = 0;
+      // int sequence_number = *(int *)(buffer + offset);
+      offset += 4;
+      // int session_id = *(int *)(buffer + offset);
+      offset += 4;
+      // int rcr_indication = *(buffer + offset);
+      offset += 1;
+      // int current_ranging_interval = *(int *)(buffer + offset);
+      offset += 4;
+      // int ranging_measurement_type = *(buffer + offset);
+      offset += 1;
+      // Skipping RFU bytes and reading Number of Ranging Measurements
+      offset += 1 + 1 + 8;
+      int number_of_ranging_measurements = *(buffer + offset);
+      offset += 1;
 
-    // // Print or handle the received ranging measurements
-    // for (uint8_t i = 0; i < rangeData.NumberofRangingMeasurements; ++i)
-    // {
-    //   printf("  cmd: Ranging Measurement %d:\n", i + 1);
-    //   printf("  cmd: MACAddress: 0x%04X\n", rangeData.MACAddress[i]);
-    //   printf("  cmd: Status: %d\n", rangeData.Status[i]);
-    //   printf("  cmd: NLoS: %d\n", rangeData.NLoS[i]);
-    //   printf("  cmd: Distance: %d cm\n", rangeData.Distance[i]);
-    // }
+      for (int i = 0; i < number_of_ranging_measurements; i++)
+      {
+        int mac_address = *(int *)(buffer + offset);
+        offset += 2;
+        int status = *(buffer + offset);
+        offset += 1;
+        int distance = *(int *)(buffer + offset);
+        offset += 2;
+
+        // Log or process the ranging measurement
+        printf("MAC Address: %04X, Status: %d, Distance: %d\n",
+               mac_address, status, distance);
+      }
+    }
   }
 }
 
