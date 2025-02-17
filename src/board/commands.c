@@ -4,12 +4,23 @@
 int *init_payload(uint8_t *buf, uint32_t sid)
 {
   uint8_t init_payload[4];
-  init_payload[0] = (uint8_t)(sid & 0xFF);
-  init_payload[1] = (uint8_t)((sid >> 8) & 0xFF);
-  init_payload[2] = (uint8_t)((sid >> 16) & 0xFF);
-  init_payload[3] = (uint8_t)((sid >> 24) & 0xFF);
+  for (int i = 0; i < 4; i++)
+  {
+    init_payload[i] = (uint8_t)((sid >> 8 * i) & 0xFF);
+    // shift by 0, then 8, then 16... and mask to append
+  }
 
   return memcpy(buf, init_payload, 4);
+}
+
+int *create_payload(uint8_t *buf, uint32_t sid, uint8_t payload_extra[], uint8_t payload_extra_len)
+{
+  int *ret = init_payload(buf, sid);
+  if (!ret)
+  {
+    return ret;
+  }
+  return memcpy(buf, payload_extra + 4, payload_extra_len);
 }
 
 int send_n_receive(int tty_fd, ControlPacket packet, ControlPacket *rcv_pkt)
@@ -111,8 +122,7 @@ int init_uwb_session(int tty_fd, uint32_t sid, uint8_t stype)
 {
   // Create the SESSION_INIT packet
   uint8_t payload[5];
-  init_payload(payload, sid);
-  payload[4] = stype;
+  create_payload(payload, sid, &stype, 1);
 
   ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_INIT, payload, 5);
   ControlPacket rcv_pkt;
@@ -122,81 +132,41 @@ int init_uwb_session(int tty_fd, uint32_t sid, uint8_t stype)
 
 int set_uwb_controller(int tty_fd, uint32_t sid)
 {
-  uint8_t session_params[] = {
+  uint8_t session_params_base[] = {
       DEVICE_TYPE, 0x01,              // DeviceType: Controller
       DEVICE_ROLE, 0x01,              // DeviceRole: Responder
       DEVICE_MAC_ADDRESS, 0x00, 0x00, // DeviceMacAddress: 0x0000
       NUMBER_OF_CONTROLEES, 0x01,     // NumberOfControlees: 1
       DST_MAC_ADDRESS, 0x01, 0x00,    // DstMacAddress: 0x0001
-      // misc params 1
-      RESULT_REPORT_CONFIG, 0x0B,                        // ResultReportConfig: 0x0B
-      VENDOR_ID, 0x08, 0x07,                             // VendorId: 0x0708
-      STATIC_STS_IV, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // StaticStsIv: 0x060504030201
-      AOA_RESULT_REQ, 0x01,                              // AoaResultReq: 1
-      UWB_INITIATION_TIME, 0xE8, 0x03, 0x00, 0x00,       // UwbInitiationTime: 1000
-      RANGING_ROUND_USAGE, 0x02,                         // RangingRoundUsage: 2
-      CHANNEL_NUMBER, 0x09,                              // ChannelNumber: 9
-      PREAMBLE_CODE_INDEX, 0x09,                         // PreambleCodeIndex: 9
-      // misc params 2
-      RFRAME_CONFIG, 0x03,                      // RframeConfig: 3
-      SFD_ID, 0x02,                             // SfdId: 2
-      SLOT_DURATION, 0x60, 0x09,                // SlotDuration: 2400
-      RANGING_INTERVAL, 0xC8, 0x00, 0x00, 0x00, // RangingInterval: 200
-      SLOTS_PER_RR, 0x19,                       // SlotsPerRr: 25
-      MULTI_NODE_MODE, 0x00,                    // MultiNodeMode: 0
-      HOPPING_MODE, 0x00,                       // HoppingMode: 0
-      RSSI_REPORTING, 0x01,                     // RssiReporting: 1
-      ENABLE_DIAGNOSTICS, 0x01,                 // EnableDiagnostics: 1
-      DIAGS_FRAME_REPORTS_FIELDS, 0x01          // DiagsFrameReportsFields: 1
   };
-  uint8_t session_params_len = sizeof(session_params);
-  return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
+  uint8_t session_params_full[sizeof(session_params_base) + sizeof(session_params_misc)];
+  memcpy(session_params_full, session_params_base, sizeof(session_params_base));
+  memcpy(session_params_full, session_params_misc, sizeof(session_params_misc));
+  uint8_t session_params_full_len = sizeof(session_params_full);
+  return set_uwb_session_parameters(tty_fd, sid, session_params_full, session_params_full_len);
 }
 
 int set_uwb_controlee(int tty_fd, uint32_t sid)
 {
-  uint8_t session_params[] = {
+  uint8_t session_params_base[] = {
       DEVICE_TYPE, 0x00,              // DeviceType: Controlee
       DEVICE_ROLE, 0x00,              // DeviceRole: Initiator
       DEVICE_MAC_ADDRESS, 0x01, 0x00, // DeviceMacAddress: 0x0001
       DST_MAC_ADDRESS, 0x00, 0x00,    // DstMacAddress: 0x0000
-      // misc params 1
-      RESULT_REPORT_CONFIG, 0x0B,                        // ResultReportConfig: 0x0B
-      VENDOR_ID, 0x08, 0x07,                             // VendorId: 0x0708
-      STATIC_STS_IV, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // StaticStsIv: 0x060504030201
-      AOA_RESULT_REQ, 0x01,                              // AoaResultReq: 1
-      UWB_INITIATION_TIME, 0xE8, 0x03, 0x00, 0x00,       // UwbInitiationTime: 1000
-      RANGING_ROUND_USAGE, 0x02,                         // RangingRoundUsage: 2
-      CHANNEL_NUMBER, 0x09,                              // ChannelNumber: 9
-      PREAMBLE_CODE_INDEX, 0x09,                         // PreambleCodeIndex: 9
-      // misc params 2
-      RFRAME_CONFIG, 0x03,                      // RframeConfig: 3
-      SFD_ID, 0x02,                             // SfdId: 2
-      SLOT_DURATION, 0x60, 0x09,                // SlotDuration: 2400
-      RANGING_INTERVAL, 0xC8, 0x00, 0x00, 0x00, // RangingInterval: 200
-      SLOTS_PER_RR, 0x19,                       // SlotsPerRr: 25
-      MULTI_NODE_MODE, 0x00,                    // MultiNodeMode: 0
-      HOPPING_MODE, 0x00,                       // HoppingMode: 0
-      RSSI_REPORTING, 0x01,                     // RssiReporting: 1
-      ENABLE_DIAGNOSTICS, 0x01,                 // EnableDiagnostics: 1
-      DIAGS_FRAME_REPORTS_FIELDS, 0x01          // DiagsFrameReportsFields: 1
   };
-  uint8_t session_params_len = sizeof(session_params);
-  return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
+  uint8_t session_params_full[sizeof(session_params_base) + sizeof(session_params_misc)];
+  memcpy(session_params_full, session_params_base, sizeof(session_params_base));
+  memcpy(session_params_full, session_params_misc, sizeof(session_params_misc));
+  uint8_t session_params_full_len = sizeof(session_params_full);
+  return set_uwb_session_parameters(tty_fd, sid, session_params_full, session_params_full_len);
 }
 
 int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[], uint8_t session_params_len)
 {
   uint8_t payload[MAX_PAYLOAD_SIZE];
-  init_payload(payload, sid);
+  create_payload(payload, sid, session_params, session_params_len);
 
-  int offset;
-  for (offset = 4; offset < session_params_len; offset++)
-  {
-    payload[offset] = session_params[offset];
-  }
-
-  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_SET_APP_CONFIG, payload, offset);
+  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_SET_APP_CONFIG, payload, session_params_len + 4);
   ControlPacket rcv_pkt;
 
   return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
@@ -205,7 +175,7 @@ int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[
 int start_uwb_ranging_session(int tty_fd, uint32_t sid)
 {
   uint8_t payload[4];
-  init_payload(payload, sid);
+  create_payload(payload, sid, NULL, 0);
 
   ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, RANGING, RANGE_START, payload, 4);
   ControlPacket rcv_pkt;
@@ -216,7 +186,7 @@ int start_uwb_ranging_session(int tty_fd, uint32_t sid)
 int stop_uwb_ranging_session(int tty_fd, uint32_t sid)
 {
   uint8_t payload[4];
-  init_payload(payload, sid);
+  create_payload(payload, sid, NULL, 0);
 
   ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, RANGING, RANGE_STOP, payload, 4);
   ControlPacket rcv_pkt;
@@ -227,7 +197,7 @@ int stop_uwb_ranging_session(int tty_fd, uint32_t sid)
 int deinit_uwb_session(int tty_fd, uint32_t sid)
 {
   uint8_t payload[4];
-  init_payload(payload, sid);
+  create_payload(payload, sid, NULL, 0);
 
   ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_DEINIT, payload, 4);
   ControlPacket rcv_pkt;
@@ -238,7 +208,7 @@ void receive_process_notif(int tty_fd)
 {
   while (1) // Loop to continuously receive and process notifications
   {
-    // sleep(2);
+    sleep(1);
     printf("\n\n\n");
     ControlPacket rcv_pkt = rcv_packet(tty_fd);
     print_packet_header(rcv_pkt.header);
@@ -246,37 +216,34 @@ void receive_process_notif(int tty_fd)
     printf("    pkt: OID: %s (0x%04X)\n", oid_t_s(rcv_pkt.gid, rcv_pkt.oid), rcv_pkt.oid);
 
     // Check if the packet is a ranging data notification
-    if (rcv_pkt.gid && rcv_pkt.oid)
+    int offset = 0;
+    // int sequence_number = *(int *)(buffer + offset);
+    offset += 4;
+    // int session_id = *(int *)(buffer + offset);
+    offset += 4;
+    // int rcr_indication = *(buffer + offset);
+    offset += 1;
+    // int current_ranging_interval = *(int *)(buffer + offset);
+    offset += 4;
+    // int ranging_measurement_type = *(buffer + offset);
+    offset += 1;
+    // Skipping RFU bytes and reading Number of Ranging Measurements
+    offset += 1 + 1 + 8;
+    int number_of_ranging_measurements = *(rcv_pkt.payload + offset);
+    offset += 1;
+
+    for (int i = 0; i < number_of_ranging_measurements; i++)
     {
-      int offset = 0;
-      // int sequence_number = *(int *)(buffer + offset);
-      offset += 4;
-      // int session_id = *(int *)(buffer + offset);
-      offset += 4;
-      // int rcr_indication = *(buffer + offset);
+      int mac_address = *(int *)(rcv_pkt.payload + offset);
+      offset += 2;
+      int status = *(rcv_pkt.payload + offset);
       offset += 1;
-      // int current_ranging_interval = *(int *)(buffer + offset);
-      offset += 4;
-      // int ranging_measurement_type = *(buffer + offset);
-      offset += 1;
-      // Skipping RFU bytes and reading Number of Ranging Measurements
-      offset += 1 + 1 + 8;
-      int number_of_ranging_measurements = *(rcv_pkt.payload + offset);
-      offset += 1;
+      int distance = *(int *)(rcv_pkt.payload + offset);
+      offset += 2;
 
-      for (int i = 0; i < number_of_ranging_measurements; i++)
-      {
-        int mac_address = *(int *)(rcv_pkt.payload + offset);
-        offset += 2;
-        int status = *(rcv_pkt.payload + offset);
-        offset += 1;
-        int distance = *(int *)(rcv_pkt.payload + offset);
-        offset += 2;
-
-        // Log or process the ranging measurement
-        printf("MAC Address: %04X, Status: %d, Distance: %d\n",
-               mac_address, status, distance);
-      }
+      // Log or process the ranging measurement
+      printf("MAC Address: %04X, Status: %d, Distance: %d\n",
+             mac_address, status, distance);
     }
   }
 }
