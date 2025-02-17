@@ -8,7 +8,7 @@
 #include "identifiers/status.h"
 #include "transport/tty.h"
 
-#define MAX_PAYLOAD_SIZE 511
+#define MAX_PAYLOAD_SIZE 255
 
 typedef struct
 {

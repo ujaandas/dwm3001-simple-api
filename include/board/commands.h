@@ -17,10 +17,6 @@ int set_uwb_controller(int tty_fd, uint32_t sid);
 
 int set_uwb_controlee(int tty_fd, uint32_t sid);
 
-int set_uwb_misc_1(int tty_fd, uint32_t sid);
-
-int set_uwb_misc_2(int tty_fd, uint32_t sid);
-
 int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[], uint8_t session_params_len);
 
 int get_uwb_session_parameters(int tty_fd, uint32_t sid);

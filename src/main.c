@@ -103,23 +103,23 @@ int main()
   }
   sleep(3);
 
-  printf("\n -- Setting UWB 1 misc params 1... -- \n");
-  if (set_uwb_misc_1(tty_fd_1, SESSION_ID) < 0)
-  {
-    printf("\n**ERROR: FAILED TO SET PARAMS 1**\n");
-    gtfo(tty_fd_1, SESSION_ID);
-    return -4;
-  }
-  sleep(3);
+  // printf("\n -- Setting UWB 1 misc params 1... -- \n");
+  // if (set_uwb_misc_1(tty_fd_1, SESSION_ID) < 0)
+  // {
+  //   printf("\n**ERROR: FAILED TO SET PARAMS 1**\n");
+  //   gtfo(tty_fd_1, SESSION_ID);
+  //   return -4;
+  // }
+  // sleep(3);
 
-  printf("\n -- Setting UWB 1 misc params 2... -- \n");
-  if (set_uwb_misc_2(tty_fd_1, SESSION_ID) < 0)
-  {
-    printf("\n**ERROR: FAILED TO SET PARAMS 2**\n");
-    gtfo(tty_fd_1, SESSION_ID);
-    return -4;
-  }
-  sleep(3);
+  // printf("\n -- Setting UWB 1 misc params 2... -- \n");
+  // if (set_uwb_misc_2(tty_fd_1, SESSION_ID) < 0)
+  // {
+  //   printf("\n**ERROR: FAILED TO SET PARAMS 2**\n");
+  //   gtfo(tty_fd_1, SESSION_ID);
+  //   return -4;
+  // }
+  // sleep(3);
 
   printf("\n -- Setting UWB 2 as controlee... -- \n");
   if (set_uwb_controlee(tty_fd_2, SESSION_ID) < 0)
@@ -130,23 +130,23 @@ int main()
   }
   sleep(3);
 
-  printf("\n -- Setting UWB 2 misc params 1... -- \n");
-  if (set_uwb_misc_1(tty_fd_2, SESSION_ID) < 0)
-  {
-    printf("\n**ERROR: FAILED TO SET PARAMS 2**\n");
-    gtfo(tty_fd_2, SESSION_ID);
-    return -4;
-  }
-  sleep(3);
+  // printf("\n -- Setting UWB 2 misc params 1... -- \n");
+  // if (set_uwb_misc_1(tty_fd_2, SESSION_ID) < 0)
+  // {
+  //   printf("\n**ERROR: FAILED TO SET PARAMS 2**\n");
+  //   gtfo(tty_fd_2, SESSION_ID);
+  //   return -4;
+  // }
+  // sleep(3);
 
-  printf("\n -- Setting UWB 2 misc params 2... -- \n");
-  if (set_uwb_misc_2(tty_fd_2, SESSION_ID) < 0)
-  {
-    printf("\n**ERROR: FAILED TO SET CONTROLEE**\n");
-    gtfo(tty_fd_2, SESSION_ID);
-    return -4;
-  }
-  sleep(3);
+  // printf("\n -- Setting UWB 2 misc params 2... -- \n");
+  // if (set_uwb_misc_2(tty_fd_2, SESSION_ID) < 0)
+  // {
+  //   printf("\n**ERROR: FAILED TO SET CONTROLEE**\n");
+  //   gtfo(tty_fd_2, SESSION_ID);
+  //   return -4;
+  // }
+  // sleep(3);
 
   printf("\n -- Starting UWB 1 ranging... -- \n");
   if (start_uwb_ranging_session(tty_fd_1, SESSION_ID) < 0)
