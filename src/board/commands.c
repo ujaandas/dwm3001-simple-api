@@ -13,7 +13,8 @@ int reset_device(int tty_fd)
   }
 
   // Receive the response
-  Packet rcvd_packet = rcv_packet(tty_fd);
+  Packet rcvd_packet;
+  rcv_packet(tty_fd, &rcvd_packet);
   if (rcvd_packet.gid != CORE || rcvd_packet.oid != CORE_DEVICE_RESET || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -34,7 +35,8 @@ int get_device_info(int tty_fd)
     return -1; // Failed to send command
   }
 
-  Packet rcvd_packet = rcv_packet(tty_fd);
+  Packet rcvd_packet;
+  rcv_packet(tty_fd, &rcvd_packet);
   if (rcvd_packet.gid) // if its 0
   {
     return -2; // Failed to receive valid response
@@ -116,7 +118,8 @@ int init_uwb_session(int tty_fd, uint32_t sid, uint8_t stype)
   sleep(1);
 
   // Receive the response
-  Packet rcvd_packet = rcv_packet(tty_fd);
+  Packet rcvd_packet;
+  rcv_packet(tty_fd, &rcvd_packet);
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_INIT || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2; // Failed to receive valid response
@@ -185,7 +188,8 @@ int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[
     return -1;
   }
 
-  Packet rcvd_packet = rcv_packet(tty_fd);
+  Packet rcvd_packet;
+  rcv_packet(tty_fd, &rcvd_packet);
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_SET_APP_CONFIG || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -216,7 +220,8 @@ int get_uwb_session_parameters(int tty_fd, uint32_t sid)
   }
 
   // Receive the response
-  Packet rcvd_packet = rcv_packet(tty_fd);
+  Packet rcvd_packet;
+  rcv_packet(tty_fd, &rcvd_packet);
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_GET_APP_CONFIG)
   {
     printf("  cmd: Unexpected response received: GID: 0x%02x, OID: 0x%02x\n", rcvd_packet.gid, rcvd_packet.oid);
@@ -274,7 +279,8 @@ int start_uwb_ranging_session(int tty_fd, uint32_t sid)
     return -1;
   }
 
-  Packet rcvd_packet = rcv_packet(tty_fd);
+  Packet rcvd_packet;
+  rcv_packet(tty_fd, &rcvd_packet);
   if (rcvd_packet.gid != RANGING || rcvd_packet.oid != RANGE_START || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -299,7 +305,8 @@ int stop_uwb_ranging_session(int tty_fd, uint32_t sid)
     return -1;
   }
 
-  Packet rcvd_packet = rcv_packet(tty_fd);
+  Packet rcvd_packet;
+  rcv_packet(tty_fd, &rcvd_packet);
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != RANGE_STOP || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -324,7 +331,8 @@ int deinit_uwb_session(int tty_fd, uint32_t sid)
     return -1;
   }
 
-  Packet rcvd_packet = rcv_packet(tty_fd);
+  Packet rcvd_packet;
+  rcv_packet(tty_fd, &rcvd_packet);
   if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_DEINIT || rcvd_packet.payload[0] != STATUS_OK)
   {
     return -2;
@@ -339,7 +347,8 @@ void receive_process_notif(int tty_fd)
   {
     sleep(1);
     printf("\n\n\n");
-    Packet rcvd_packet = rcv_packet(tty_fd);
+    Packet rcvd_packet;
+    rcv_packet(tty_fd, &rcvd_packet);
     print_packet_header(rcvd_packet.header);
     printf("    pkt: GID: %s (0x%04X)\n", gid_t_s(rcvd_packet.gid), rcvd_packet.gid);
     printf("    pkt: OID: %s (0x%04X)\n", oid_t_s(rcvd_packet.gid, rcvd_packet.oid), rcvd_packet.oid);

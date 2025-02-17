@@ -26,6 +26,6 @@ Packet create_packet(PacketHeader header, GroupIdentifier gid, OpcodeIdentifier 
 // Function to send a ControlPackets
 int send_packet(int tty_fd, Packet packet);
 
-Packet rcv_packet(int tty_fd);
+int rcv_packet(int tty_fd, Packet *rcvd_pkt);
 
 #endif // CTRL_PKT_H

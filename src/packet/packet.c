@@ -43,9 +43,8 @@ int send_packet(int tty_fd, Packet packet)
   return tty_send(tty_fd, buffer, sizeof(buffer));
 }
 
-Packet rcv_packet(int tty_fd)
+int rcv_packet(int tty_fd, Packet *rcvd_pkt)
 {
-  Packet packet;
   uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
   printf("    pkt: Receiving response...\n");
@@ -53,8 +52,7 @@ Packet rcv_packet(int tty_fd)
   if (bytes_read < 4)
   {
     printf("    pkt: Failed to receive a valid response header\n");
-    packet = create_packet(NotifHeader, 0x0, 0x0, NULL, 0);
-    return packet; // Failed to receive valid response
+    return -1;
   }
 
   // Print the header
@@ -66,25 +64,25 @@ Packet rcv_packet(int tty_fd)
   printf("\n");
 
   // Translate into Packet
-  packet.header.mt = (buffer[0] >> 5) & 0b00000111;
-  packet.header.pbf = (buffer[0] >> 4) & 0b00000001;
-  packet.gid = (buffer[0] & 0b00001111);
-  packet.oid = (buffer[1] & 0b00111111);
-  packet.payload_len = buffer[3];
+  rcvd_pkt->header.mt = (buffer[0] >> 5) & 0b00000111;
+  rcvd_pkt->header.pbf = (buffer[0] >> 4) & 0b00000001;
+  rcvd_pkt->gid = (buffer[0] & 0b00001111);
+  rcvd_pkt->oid = (buffer[1] & 0b00111111);
+  rcvd_pkt->payload_len = buffer[3];
 
-  print_packet_header(packet.header);
+  print_packet_header(rcvd_pkt->header);
 
   // Print the payload
   printf("    pkt: Received Payload:\n");
-  for (int i = 4; i < 4 + packet.payload_len; i++)
+  for (int i = 4; i < 4 + rcvd_pkt->payload_len; i++)
   {
     printf("    pkt: %02X (status: %s)\n", buffer[i], status_to_s(buffer[i]));
   }
-  printf("    pkt: of length %d byte", packet.payload_len);
+  printf("    pkt: of length %d byte", rcvd_pkt->payload_len);
   printf("\n");
 
   // Copy the payload
-  memcpy(packet.payload, buffer + 4, packet.payload_len);
+  memcpy(rcvd_pkt->payload, buffer + 4, rcvd_pkt->payload_len);
 
-  return packet;
+  return 1;
 }
