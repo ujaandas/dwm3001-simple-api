@@ -1,4 +1,5 @@
 #include "board/commands.h"
+#include "board/device_tags.h"
 
 uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
@@ -137,33 +138,31 @@ int init_uwb_session(int tty_fd, uint32_t sid, uint8_t stype)
 int set_uwb_controller(int tty_fd, uint32_t sid)
 {
   uint8_t session_params[] = {
-      // tag, value
-      0x00, 0x01,       // DeviceType: Controller (0x00 is tag for dev type)
-      0x11, 0x01,       // DeviceRole: Responder (0x11 is tag for dev role)
-      0x06, 0x00, 0x00, // DeviceMacAddress: 0x0000 (0x06 is tag for dev mac addr.)
-      0x05, 0x01,       // NumberOfControlees: 1 (0x05 is tag for controllee #)
-      0x07, 0x01, 0x00, // DstMacAddress: 0x0001 (0x07 is tag for dst mac addr.)
+      DEVICE_TYPE, 0x01,              // DeviceType: Controller
+      DEVICE_ROLE, 0x01,              // DeviceRole: Responder
+      DEVICE_MAC_ADDRESS, 0x00, 0x00, // DeviceMacAddress: 0x0000
+      NUMBER_OF_CONTROLEES, 0x01,     // NumberOfControlees: 1
+      DST_MAC_ADDRESS, 0x01, 0x00,    // DstMacAddress: 0x0001
       // misc params 1
-      0x2E, 0x0B,                               // ResultReportConfig: 0x0B (0x2E is the tag for result report config)
-      0x27, 0x08, 0x07,                         // VendorId: 0x0708 (0x27 is the tag for vendor ID)
-      0x28, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // StaticStsIv: 0x060504030201 (0x28 is the tag for Static STS IV)
-      0x0D, 0x01,                               // AoaResultReq: 1 (0x0D is the tag for AoA result request)
-      0x2B, 0xE8, 0x03, 0x00, 0x00,             // UwbInitiationTime: 1000 (0x2B is the tag for UWB initiation time)
-      0x01, 0x02,                               // RangingRoundUsage: 2 (0x01 is the tag for ranging round usage)
-      0x04, 0x09,                               // ChannelNumber: 9 (0x04 is the tag for channel number)
-      0x14, 0x09,                               // PreambleCodeIndex: 9 (0x14 is the tag for preamble code index)
+      RESULT_REPORT_CONFIG, 0x0B,                        // ResultReportConfig: 0x0B
+      VENDOR_ID, 0x08, 0x07,                             // VendorId: 0x0708
+      STATIC_STS_IV, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // StaticStsIv: 0x060504030201
+      AOA_RESULT_REQ, 0x01,                              // AoaResultReq: 1
+      UWB_INITIATION_TIME, 0xE8, 0x03, 0x00, 0x00,       // UwbInitiationTime: 1000
+      RANGING_ROUND_USAGE, 0x02,                         // RangingRoundUsage: 2
+      CHANNEL_NUMBER, 0x09,                              // ChannelNumber: 9
+      PREAMBLE_CODE_INDEX, 0x09,                         // PreambleCodeIndex: 9
       // misc params 2
-      0x12, 0x03,                   // RframeConfig: 3 (0x12 is the tag for RFrame config)
-      0x15, 0x02,                   // SfdId: 2 (0x15 is the tag for SFD ID)
-      0x08, 0x60, 0x09,             // SlotDuration: 2400 (0x08 is the tag for slot duration)
-      0x09, 0xC8, 0x00, 0x00, 0x00, // RangingInterval: 200 (0x09 is the tag for ranging interval)
-      0x1B, 0x19,                   // SlotsPerRr: 25 (0x1B is the tag for slots per ranging round)
-      0x03, 0x00,                   // MultiNodeMode: 0 (0x03 is the tag for multi-node mode)
-      0x2C, 0x00,                   // HoppingMode: 0 (0x2C is the tag for hopping mode)
-      0x36, 0x01,                   // RssiReporting: 1 (0x36 is the tag for RSSI reporting)
-      0xE8, 0x01,                   // EnableDiagnostics: 1 (0xE8 is the tag for enabling diagnostics)
-      0xE9, 0x01                    // DiagsFrameReportsFields: 1 (0xE9 is the tag for diagnostics frame report fields)
-
+      RFRAME_CONFIG, 0x03,                      // RframeConfig: 3
+      SFD_ID, 0x02,                             // SfdId: 2
+      SLOT_DURATION, 0x60, 0x09,                // SlotDuration: 2400
+      RANGING_INTERVAL, 0xC8, 0x00, 0x00, 0x00, // RangingInterval: 200
+      SLOTS_PER_RR, 0x19,                       // SlotsPerRr: 25
+      MULTI_NODE_MODE, 0x00,                    // MultiNodeMode: 0
+      HOPPING_MODE, 0x00,                       // HoppingMode: 0
+      RSSI_REPORTING, 0x01,                     // RssiReporting: 1
+      ENABLE_DIAGNOSTICS, 0x01,                 // EnableDiagnostics: 1
+      DIAGS_FRAME_REPORTS_FIELDS, 0x01          // DiagsFrameReportsFields: 1
   };
   uint8_t session_params_len = sizeof(session_params);
   return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
@@ -172,30 +171,30 @@ int set_uwb_controller(int tty_fd, uint32_t sid)
 int set_uwb_controlee(int tty_fd, uint32_t sid)
 {
   uint8_t session_params[] = {
-      0x00, 0x00,       // DeviceType: Controlee (0x00)
-      0x11, 0x00,       // DeviceRole: Initiator
-      0x06, 0x01, 0x00, // DeviceMacAddress: 0x0001
-      0x07, 0x00, 0x00, // DstMacAddress: 0x0000
+      DEVICE_TYPE, 0x00,              // DeviceType: Controlee
+      DEVICE_ROLE, 0x00,              // DeviceRole: Initiator
+      DEVICE_MAC_ADDRESS, 0x01, 0x00, // DeviceMacAddress: 0x0001
+      DST_MAC_ADDRESS, 0x00, 0x00,    // DstMacAddress: 0x0000
       // misc params 1
-      0x2E, 0x0B,                               // ResultReportConfig: 0x0B (0x2E is the tag for result report config)
-      0x27, 0x08, 0x07,                         // VendorId: 0x0708 (0x27 is the tag for vendor ID)
-      0x28, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // StaticStsIv: 0x060504030201 (0x28 is the tag for Static STS IV)
-      0x0D, 0x01,                               // AoaResultReq: 1 (0x0D is the tag for AoA result request)
-      0x2B, 0xE8, 0x03, 0x00, 0x00,             // UwbInitiationTime: 1000 (0x2B is the tag for UWB initiation time)
-      0x01, 0x02,                               // RangingRoundUsage: 2 (0x01 is the tag for ranging round usage)
-      0x04, 0x09,                               // ChannelNumber: 9 (0x04 is the tag for channel number)
-      0x14, 0x09,                               // PreambleCodeIndex: 9 (0x14 is the tag for preamble code index)
+      RESULT_REPORT_CONFIG, 0x0B,                        // ResultReportConfig: 0x0B
+      VENDOR_ID, 0x08, 0x07,                             // VendorId: 0x0708
+      STATIC_STS_IV, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // StaticStsIv: 0x060504030201
+      AOA_RESULT_REQ, 0x01,                              // AoaResultReq: 1
+      UWB_INITIATION_TIME, 0xE8, 0x03, 0x00, 0x00,       // UwbInitiationTime: 1000
+      RANGING_ROUND_USAGE, 0x02,                         // RangingRoundUsage: 2
+      CHANNEL_NUMBER, 0x09,                              // ChannelNumber: 9
+      PREAMBLE_CODE_INDEX, 0x09,                         // PreambleCodeIndex: 9
       // misc params 2
-      0x12, 0x03,                   // RframeConfig: 3 (0x12 is the tag for RFrame config)
-      0x15, 0x02,                   // SfdId: 2 (0x15 is the tag for SFD ID)
-      0x08, 0x60, 0x09,             // SlotDuration: 2400 (0x08 is the tag for slot duration)
-      0x09, 0xC8, 0x00, 0x00, 0x00, // RangingInterval: 200 (0x09 is the tag for ranging interval)
-      0x1B, 0x19,                   // SlotsPerRr: 25 (0x1B is the tag for slots per ranging round)
-      0x03, 0x00,                   // MultiNodeMode: 0 (0x03 is the tag for multi-node mode)
-      0x2C, 0x00,                   // HoppingMode: 0 (0x2C is the tag for hopping mode)
-      0x36, 0x01,                   // RssiReporting: 1 (0x36 is the tag for RSSI reporting)
-      0xE8, 0x01,                   // EnableDiagnostics: 1 (0xE8 is the tag for enabling diagnostics)
-      0xE9, 0x01                    // DiagsFrameReportsFields: 1 (0xE9 is the tag for diagnostics frame report fields)
+      RFRAME_CONFIG, 0x03,                      // RframeConfig: 3
+      SFD_ID, 0x02,                             // SfdId: 2
+      SLOT_DURATION, 0x60, 0x09,                // SlotDuration: 2400
+      RANGING_INTERVAL, 0xC8, 0x00, 0x00, 0x00, // RangingInterval: 200
+      SLOTS_PER_RR, 0x19,                       // SlotsPerRr: 25
+      MULTI_NODE_MODE, 0x00,                    // MultiNodeMode: 0
+      HOPPING_MODE, 0x00,                       // HoppingMode: 0
+      RSSI_REPORTING, 0x01,                     // RssiReporting: 1
+      ENABLE_DIAGNOSTICS, 0x01,                 // EnableDiagnostics: 1
+      DIAGS_FRAME_REPORTS_FIELDS, 0x01          // DiagsFrameReportsFields: 1
   };
   uint8_t session_params_len = sizeof(session_params);
   return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
