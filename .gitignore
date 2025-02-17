@@ -16,3 +16,6 @@
 # Ignore bin and obj folder
 bin/
 obj/
+
+# Ignore .vscode
+.vscode/

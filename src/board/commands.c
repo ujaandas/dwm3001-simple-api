@@ -1,4 +1,5 @@
 #include "board/commands.h"
+#include "board/tags.h"
 
 uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
@@ -129,68 +130,40 @@ int init_uwb_session(int tty_fd, uint32_t sid, uint8_t stype)
 int set_uwb_controller(int tty_fd, uint32_t sid)
 {
   uint8_t session_params[] = {
-      // tag, value
-      0x00, 0x01,       // DeviceType: Controller (0x00 is tag for dev type)
-      0x11, 0x01,       // DeviceRole: Responder (0x11 is tag for dev role)
-      0x06, 0x00, 0x00, // DeviceMacAddress: 0x0000 (0x06 is tag for dev mac addr.)
-      0x05, 0x01,       // NumberOfControlees: 1 (0x05 is tag for controllee #)
-      0x07, 0x01, 0x00, // DstMacAddress: 0x0001 (0x07 is tag for dst mac addr.)
-      // misc params 1
-      0x2E, 0x0B,                               // ResultReportConfig: 0x0B (0x2E is the tag for result report config)
-      0x27, 0x08, 0x07,                         // VendorId: 0x0708 (0x27 is the tag for vendor ID)
-      0x28, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // StaticStsIv: 0x060504030201 (0x28 is the tag for Static STS IV)
-      0x0D, 0x01,                               // AoaResultReq: 1 (0x0D is the tag for AoA result request)
-      0x2B, 0xE8, 0x03, 0x00, 0x00,             // UwbInitiationTime: 1000 (0x2B is the tag for UWB initiation time)
-      0x01, 0x02,                               // RangingRoundUsage: 2 (0x01 is the tag for ranging round usage)
-      0x04, 0x09,                               // ChannelNumber: 9 (0x04 is the tag for channel number)
-      0x14, 0x09,                               // PreambleCodeIndex: 9 (0x14 is the tag for preamble code index)
-      // misc params 2
-      0x12, 0x03,                   // RframeConfig: 3 (0x12 is the tag for RFrame config)
-      0x15, 0x02,                   // SfdId: 2 (0x15 is the tag for SFD ID)
-      0x08, 0x60, 0x09,             // SlotDuration: 2400 (0x08 is the tag for slot duration)
-      0x09, 0xC8, 0x00, 0x00, 0x00, // RangingInterval: 200 (0x09 is the tag for ranging interval)
-      0x1B, 0x19,                   // SlotsPerRr: 25 (0x1B is the tag for slots per ranging round)
-      0x03, 0x00,                   // MultiNodeMode: 0 (0x03 is the tag for multi-node mode)
-      0x2C, 0x00,                   // HoppingMode: 0 (0x2C is the tag for hopping mode)
-      0x36, 0x01,                   // RssiReporting: 1 (0x36 is the tag for RSSI reporting)
-      0xE8, 0x01,                   // EnableDiagnostics: 1 (0xE8 is the tag for enabling diagnostics)
-      0xE9, 0x01                    // DiagsFrameReportsFields: 1 (0xE9 is the tag for diagnostics frame report fields)
-
+      TAG_DEVICE_TYPE, 0x01,              // DeviceType: Controller
+      TAG_DEVICE_ROLE, 0x01,              // DeviceRole: Responder
+      TAG_DEVICE_MAC_ADDRESS, 0x00, 0x00, // DeviceMacAddress: 0x0000
+      TAG_NUMBER_OF_CONTROLEES, 0x01,     // NumberOfControlees: 1
+      TAG_DST_MAC_ADDRESS, 0x01, 0x00     // DstMacAddress: 0x0001
   };
+
   uint8_t session_params_len = sizeof(session_params);
-  return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
+  uint8_t total_params_len = session_params_len + sizeof(MISC_PARAMS);
+
+  uint8_t complete_params[total_params_len];
+  memcpy(complete_params, session_params, session_params_len);
+  memcpy(complete_params + session_params_len, MISC_PARAMS, sizeof(MISC_PARAMS));
+
+  return set_uwb_session_parameters(tty_fd, sid, complete_params, total_params_len);
 }
 
 int set_uwb_controlee(int tty_fd, uint32_t sid)
 {
   uint8_t session_params[] = {
-      0x00, 0x00,       // DeviceType: Controlee (0x00)
-      0x11, 0x00,       // DeviceRole: Initiator
-      0x06, 0x01, 0x00, // DeviceMacAddress: 0x0001
-      0x07, 0x00, 0x00, // DstMacAddress: 0x0000
-      // misc params 1
-      0x2E, 0x0B,                               // ResultReportConfig: 0x0B (0x2E is the tag for result report config)
-      0x27, 0x08, 0x07,                         // VendorId: 0x0708 (0x27 is the tag for vendor ID)
-      0x28, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // StaticStsIv: 0x060504030201 (0x28 is the tag for Static STS IV)
-      0x0D, 0x01,                               // AoaResultReq: 1 (0x0D is the tag for AoA result request)
-      0x2B, 0xE8, 0x03, 0x00, 0x00,             // UwbInitiationTime: 1000 (0x2B is the tag for UWB initiation time)
-      0x01, 0x02,                               // RangingRoundUsage: 2 (0x01 is the tag for ranging round usage)
-      0x04, 0x09,                               // ChannelNumber: 9 (0x04 is the tag for channel number)
-      0x14, 0x09,                               // PreambleCodeIndex: 9 (0x14 is the tag for preamble code index)
-      // misc params 2
-      0x12, 0x03,                   // RframeConfig: 3 (0x12 is the tag for RFrame config)
-      0x15, 0x02,                   // SfdId: 2 (0x15 is the tag for SFD ID)
-      0x08, 0x60, 0x09,             // SlotDuration: 2400 (0x08 is the tag for slot duration)
-      0x09, 0xC8, 0x00, 0x00, 0x00, // RangingInterval: 200 (0x09 is the tag for ranging interval)
-      0x1B, 0x19,                   // SlotsPerRr: 25 (0x1B is the tag for slots per ranging round)
-      0x03, 0x00,                   // MultiNodeMode: 0 (0x03 is the tag for multi-node mode)
-      0x2C, 0x00,                   // HoppingMode: 0 (0x2C is the tag for hopping mode)
-      0x36, 0x01,                   // RssiReporting: 1 (0x36 is the tag for RSSI reporting)
-      0xE8, 0x01,                   // EnableDiagnostics: 1 (0xE8 is the tag for enabling diagnostics)
-      0xE9, 0x01                    // DiagsFrameReportsFields: 1 (0xE9 is the tag for diagnostics frame report fields)
+      TAG_DEVICE_TYPE, 0x00,              // DeviceType: Controlee
+      TAG_DEVICE_ROLE, 0x00,              // DeviceRole: Initiator
+      TAG_DEVICE_MAC_ADDRESS, 0x01, 0x00, // DeviceMacAddress: 0x0001
+      TAG_DST_MAC_ADDRESS, 0x00, 0x00     // DstMacAddress: 0x0000
   };
+
   uint8_t session_params_len = sizeof(session_params);
-  return set_uwb_session_parameters(tty_fd, sid, session_params, session_params_len);
+  uint8_t total_params_len = session_params_len + sizeof(MISC_PARAMS);
+
+  uint8_t complete_params[total_params_len];
+  memcpy(complete_params, session_params, session_params_len);
+  memcpy(complete_params + session_params_len, MISC_PARAMS, sizeof(MISC_PARAMS));
+
+  return set_uwb_session_parameters(tty_fd, sid, complete_params, total_params_len);
 }
 
 int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[], uint8_t session_params_len)
