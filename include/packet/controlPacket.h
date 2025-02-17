@@ -26,6 +26,6 @@ ControlPacket create_packet(MessageType mt, PacketBoundaryFlag pbf, GroupIdentif
 // Function to send a ControlPackets
 int send_packet(int tty_fd, ControlPacket packet);
 
-ControlPacket rcv_packet(int tty_fd, uint8_t *buffer, size_t buffer_size);
+ControlPacket rcv_packet(int tty_fd);
 
 #endif // CTRL_PKT_H

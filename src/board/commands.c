@@ -1,8 +1,6 @@
 #include "board/commands.h"
 #include "board/device_tags.h"
 
-uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
-
 int *init_payload(uint8_t *buf, uint32_t sid)
 {
   uint8_t init_payload[4];
@@ -14,82 +12,84 @@ int *init_payload(uint8_t *buf, uint32_t sid)
   return memcpy(buf, init_payload, 4);
 }
 
-int reset_device(int tty_fd)
+int send_n_receive(int tty_fd, ControlPacket packet, ControlPacket *rcv_pkt)
 {
-  uint8_t temp_payload = REASON_RESET_POWER_CYCLE;
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, CORE, CORE_DEVICE_RESET, &temp_payload, 1);
-
-  printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(tty_fd, packet) < 0)
-  {
-    return -1;
-  }
-
-  // Receive the response
-  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
-  if (rcvd_packet.gid != CORE || rcvd_packet.oid != CORE_DEVICE_RESET || rcvd_packet.payload[0] != STATUS_OK)
-  {
-    return -2;
-  }
-
-  return 1;
-}
-
-int get_device_info(int tty_fd)
-{
-  // Create the CORE_GET_DEVICE_INFO packet
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, CORE, CORE_GET_DEVICE_INFO, NULL, 0);
-
-  // Send the CORE_GET_DEVICE_INFO command
+  // Send the SESSION_INIT command
   printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
   if (send_packet(tty_fd, packet) < 0)
   {
     return -1; // Failed to send command
   }
 
-  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
-  if (rcvd_packet.gid) // if its 0
+  sleep(1);
+
+  // Receive the response
+  *rcv_pkt = rcv_packet(tty_fd);
+  if (rcv_pkt->gid != packet.gid || rcv_pkt->oid != packet.oid || rcv_pkt->payload[0] != STATUS_OK)
   {
     return -2; // Failed to receive valid response
+  }
+
+  return 1; // Success
+}
+
+int reset_device(int tty_fd)
+{
+  uint8_t temp_payload = REASON_RESET_POWER_CYCLE;
+  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, CORE, CORE_DEVICE_RESET, &temp_payload, 1);
+  ControlPacket rcv_pkt;
+  return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
+}
+
+int get_device_info(int tty_fd)
+{
+  // Create the CORE_GET_DEVICE_INFO packet
+  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, CORE, CORE_GET_DEVICE_INFO, NULL, 0);
+  ControlPacket rcv_pkt;
+
+  uint8_t ret = send_n_receive(tty_fd, send_pkt, &rcv_pkt);
+  if (!ret)
+  {
+    return ret;
   }
 
   // Parse device info
   int offset = 0;
 
   // NOTE: C for some reason does not like 2 operations in one, so for instance
-  // uint16_t uci_ver = (rcvd_packet.payload[offset++] << 8) | rcvd_packet.payload[offset++];
+  // uint16_t uci_ver = (rcv_pkt.payload[offset++] << 8) | rcv_pkt.payload[offset++];
   // is undefined behaviour. The existing solution is, IMO, much uglier,
   // but does avoid the warnings so whatever.
 
-  uint8_t status = rcvd_packet.payload[offset++];
+  uint8_t status = rcv_pkt.payload[offset++];
 
-  uint16_t uci_ver = rcvd_packet.payload[offset] | (rcvd_packet.payload[offset + 1] << 8);
+  uint16_t uci_ver = rcv_pkt.payload[offset] | (rcv_pkt.payload[offset + 1] << 8);
   offset += 2;
 
-  uint16_t mac_ver = rcvd_packet.payload[offset] | (rcvd_packet.payload[offset + 1] << 8);
+  uint16_t mac_ver = rcv_pkt.payload[offset] | (rcv_pkt.payload[offset + 1] << 8);
   offset += 2;
 
-  uint16_t phy_ver = rcvd_packet.payload[offset] | (rcvd_packet.payload[offset + 1] << 8);
+  uint16_t phy_ver = rcv_pkt.payload[offset] | (rcv_pkt.payload[offset + 1] << 8);
   offset += 2;
 
-  uint16_t test_ver = rcvd_packet.payload[offset] | (rcvd_packet.payload[offset + 1] << 8);
+  uint16_t test_ver = rcv_pkt.payload[offset] | (rcv_pkt.payload[offset + 1] << 8);
   offset += 2;
 
-  uint8_t v_info_len = rcvd_packet.payload[offset++];
+  uint8_t v_info_len = rcv_pkt.payload[offset++];
 
-  uint32_t device_id = rcvd_packet.payload[offset] | (rcvd_packet.payload[offset + 1] << 8) |
-                       (rcvd_packet.payload[offset + 2] << 16) | (rcvd_packet.payload[offset + 3] << 24);
+  uint32_t device_id = rcv_pkt.payload[offset] | (rcv_pkt.payload[offset + 1] << 8) |
+                       (rcv_pkt.payload[offset + 2] << 16) | (rcv_pkt.payload[offset + 3] << 24);
   offset += 4;
 
-  uint32_t part_id = rcvd_packet.payload[offset] | (rcvd_packet.payload[offset + 1] << 8) |
-                     (rcvd_packet.payload[offset + 2] << 16) | (rcvd_packet.payload[offset + 3] << 24);
+  uint32_t part_id = rcv_pkt.payload[offset] | (rcv_pkt.payload[offset + 1] << 8) |
+                     (rcv_pkt.payload[offset + 2] << 16) | (rcv_pkt.payload[offset + 3] << 24);
   offset += 4;
 
-  uint32_t firmware_ver = rcvd_packet.payload[offset] | (rcvd_packet.payload[offset + 1] << 8) |
-                          (rcvd_packet.payload[offset + 2] << 16);
+  uint32_t firmware_ver = rcv_pkt.payload[offset] | (rcv_pkt.payload[offset + 1] << 8) |
+                          (rcv_pkt.payload[offset + 2] << 16);
   offset += 3;
 
-  uint8_t aoa_cap = rcvd_packet.payload[offset++];
+  uint8_t aoa_cap = rcv_pkt.payload[offset++];
 
   // print all info
   printf("  cmd: Status: %2sx\n", status_to_s(status));
@@ -114,25 +114,10 @@ int init_uwb_session(int tty_fd, uint32_t sid, uint8_t stype)
   init_payload(payload, sid);
   payload[4] = stype;
 
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_INIT, payload, 5);
+  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_INIT, payload, 5);
+  ControlPacket rcv_pkt;
 
-  // Send the SESSION_INIT command
-  printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(tty_fd, packet) < 0)
-  {
-    return -1; // Failed to send command
-  }
-
-  sleep(1);
-
-  // Receive the response
-  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
-  if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_INIT || rcvd_packet.payload[0] != STATUS_OK)
-  {
-    return -2; // Failed to receive valid response
-  }
-
-  return 1; // Success
+  return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
 
 int set_uwb_controller(int tty_fd, uint32_t sid)
@@ -211,77 +196,10 @@ int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[
     payload[offset] = session_params[offset];
   }
 
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_SET_APP_CONFIG, payload, offset);
-  if (send_packet(tty_fd, packet) < 0)
-  {
-    return -1;
-  }
+  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_SET_APP_CONFIG, payload, offset);
+  ControlPacket rcv_pkt;
 
-  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
-  if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_SET_APP_CONFIG || rcvd_packet.payload[0] != STATUS_OK)
-  {
-    return -2;
-  }
-
-  return 1;
-}
-
-int get_uwb_session_parameters(int tty_fd, uint32_t sid)
-{
-  uint8_t payload[4];
-  init_payload(payload, sid);
-
-  // Create the packet
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_GET_APP_CONFIG, payload, 4);
-
-  printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(tty_fd, packet) < 0)
-  {
-    printf("  cmd: Failed to send SESSION_GET_APP_CONFIG command.\n");
-    return -1; // Failed to send command
-  }
-
-  // Receive the response
-  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
-  if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_GET_APP_CONFIG)
-  {
-    printf("  cmd: Unexpected response received: GID: 0x%02x, OID: 0x%02x\n", rcvd_packet.gid, rcvd_packet.oid);
-    return -2; // Failed to receive valid response
-  }
-
-  // Parse the received payload
-  uint8_t status = rcvd_packet.payload[0];
-  if (status != 0x00)
-  {
-    printf("  cmd: Error retrieving session configuration, status: 0x%02x\n", status);
-    return -3; // Error status received
-  }
-
-  // Process the TLV data (Type-Length-Value)
-  uint8_t *tlv_payload = rcvd_packet.payload + 1;
-  int tlv_length = rcvd_packet.payload_len - 1; // Adjust based on actual payload length
-
-  // Example parsing loop
-  while (tlv_length > 0)
-  {
-    uint8_t type = *tlv_payload;
-    uint8_t length = *(tlv_payload + 1);
-    uint8_t *value = tlv_payload + 2;
-
-    // Print or process the TLV
-    printf("Type: 0x%02x, Length: %d, Value: ", type, length);
-    for (int i = 0; i < length; i++)
-    {
-      printf("0x%02x ", value[i]);
-    }
-    printf("\n");
-
-    // Move to the next TLV
-    tlv_payload += 2 + length;
-    tlv_length -= 2 + length;
-  }
-
-  return 1; // Success
+  return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
 
 int start_uwb_ranging_session(int tty_fd, uint32_t sid)
@@ -289,21 +207,10 @@ int start_uwb_ranging_session(int tty_fd, uint32_t sid)
   uint8_t payload[4];
   init_payload(payload, sid);
 
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, RANGING, RANGE_START, payload, 4);
+  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, RANGING, RANGE_START, payload, 4);
+  ControlPacket rcv_pkt;
 
-  printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(tty_fd, packet) < 0)
-  {
-    return -1;
-  }
-
-  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
-  if (rcvd_packet.gid != RANGING || rcvd_packet.oid != RANGE_START || rcvd_packet.payload[0] != STATUS_OK)
-  {
-    return -2;
-  }
-
-  return 1;
+  return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
 
 int stop_uwb_ranging_session(int tty_fd, uint32_t sid)
@@ -311,21 +218,10 @@ int stop_uwb_ranging_session(int tty_fd, uint32_t sid)
   uint8_t payload[4];
   init_payload(payload, sid);
 
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, RANGING, RANGE_STOP, payload, 4);
+  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, RANGING, RANGE_STOP, payload, 4);
+  ControlPacket rcv_pkt;
 
-  printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(tty_fd, packet) < 0)
-  {
-    return -1;
-  }
-
-  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
-  if (rcvd_packet.gid != SESSION || rcvd_packet.oid != RANGE_STOP || rcvd_packet.payload[0] != STATUS_OK)
-  {
-    return -2;
-  }
-
-  return 1;
+  return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
 
 int deinit_uwb_session(int tty_fd, uint32_t sid)
@@ -333,21 +229,9 @@ int deinit_uwb_session(int tty_fd, uint32_t sid)
   uint8_t payload[4];
   init_payload(payload, sid);
 
-  ControlPacket packet = create_packet(COMMAND, COMPLETE, SESSION, SESSION_DEINIT, payload, 4);
-
-  printf("  cmd: Sending %s command...\n", oid_t_s(packet.gid, packet.oid));
-  if (send_packet(tty_fd, packet) < 0)
-  {
-    return -1;
-  }
-
-  ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
-  if (rcvd_packet.gid != SESSION || rcvd_packet.oid != SESSION_DEINIT || rcvd_packet.payload[0] != STATUS_OK)
-  {
-    return -2;
-  }
-
-  return 1;
+  ControlPacket send_pkt = create_packet(COMMAND, COMPLETE, SESSION, SESSION_DEINIT, payload, 4);
+  ControlPacket rcv_pkt;
+  return send_n_receive(tty_fd, send_pkt, &rcv_pkt);
 }
 
 void receive_process_notif(int tty_fd)
@@ -356,13 +240,13 @@ void receive_process_notif(int tty_fd)
   {
     // sleep(2);
     printf("\n\n\n");
-    ControlPacket rcvd_packet = rcv_packet(tty_fd, buffer, sizeof(buffer));
-    print_packet_header(rcvd_packet.header);
-    printf("    pkt: GID: %s (0x%04X)\n", gid_t_s(rcvd_packet.gid), rcvd_packet.gid);
-    printf("    pkt: OID: %s (0x%04X)\n", oid_t_s(rcvd_packet.gid, rcvd_packet.oid), rcvd_packet.oid);
+    ControlPacket rcv_pkt = rcv_packet(tty_fd);
+    print_packet_header(rcv_pkt.header);
+    printf("    pkt: GID: %s (0x%04X)\n", gid_t_s(rcv_pkt.gid), rcv_pkt.gid);
+    printf("    pkt: OID: %s (0x%04X)\n", oid_t_s(rcv_pkt.gid, rcv_pkt.oid), rcv_pkt.oid);
 
     // Check if the packet is a ranging data notification
-    if (rcvd_packet.gid && rcvd_packet.oid)
+    if (rcv_pkt.gid && rcv_pkt.oid)
     {
       int offset = 0;
       // int sequence_number = *(int *)(buffer + offset);
@@ -377,16 +261,16 @@ void receive_process_notif(int tty_fd)
       offset += 1;
       // Skipping RFU bytes and reading Number of Ranging Measurements
       offset += 1 + 1 + 8;
-      int number_of_ranging_measurements = *(buffer + offset);
+      int number_of_ranging_measurements = *(rcv_pkt.payload + offset);
       offset += 1;
 
       for (int i = 0; i < number_of_ranging_measurements; i++)
       {
-        int mac_address = *(int *)(buffer + offset);
+        int mac_address = *(int *)(rcv_pkt.payload + offset);
         offset += 2;
-        int status = *(buffer + offset);
+        int status = *(rcv_pkt.payload + offset);
         offset += 1;
-        int distance = *(int *)(buffer + offset);
+        int distance = *(int *)(rcv_pkt.payload + offset);
         offset += 2;
 
         // Log or process the ranging measurement

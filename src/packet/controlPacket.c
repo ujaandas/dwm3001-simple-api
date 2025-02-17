@@ -44,12 +44,13 @@ int send_packet(int tty_fd, ControlPacket packet)
   return tty_send(tty_fd, buffer, sizeof(buffer));
 }
 
-ControlPacket rcv_packet(int tty_fd, uint8_t *buffer, size_t buffer_size)
+ControlPacket rcv_packet(int tty_fd)
 {
   ControlPacket packet;
+  uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
   printf("    pkt: Receiving response...\n");
-  int bytes_read = tty_rcv(tty_fd, buffer, buffer_size);
+  int bytes_read = tty_rcv(tty_fd, buffer, sizeof(buffer));
   if (bytes_read < 4)
   {
     printf("    pkt: Failed to receive a valid response header\n");

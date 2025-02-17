@@ -7,6 +7,10 @@
 
 extern uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
+int *init_payload(uint8_t *buf, uint32_t sid);
+
+int send_n_receive(int tty_fd, ControlPacket packet, ControlPacket *rcvd_packet);
+
 int reset_device(int tty_fd);
 
 int get_device_info(int tty_fd);
@@ -18,8 +22,6 @@ int set_uwb_controller(int tty_fd, uint32_t sid);
 int set_uwb_controlee(int tty_fd, uint32_t sid);
 
 int set_uwb_session_parameters(int tty_fd, uint32_t sid, uint8_t session_params[], uint8_t session_params_len);
-
-int get_uwb_session_parameters(int tty_fd, uint32_t sid);
 
 int start_uwb_ranging_session(int tty_fd, uint32_t session_id);
 
