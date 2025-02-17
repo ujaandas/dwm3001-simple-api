@@ -17,15 +17,15 @@ typedef struct
   OpcodeIdentifier oid;
   uint8_t payload_len;
   uint8_t payload[MAX_PAYLOAD_SIZE];
-} ControlPacket;
+} Packet;
 
 void print_packet_header(PacketHeader header);
 
-ControlPacket create_packet(MessageType mt, PacketBoundaryFlag pbf, GroupIdentifier gid, OpcodeIdentifier oid, uint8_t *payload, uint8_t payload_len);
+Packet create_packet(PacketHeader header, GroupIdentifier gid, OpcodeIdentifier oid, uint8_t *payload, uint8_t payload_len);
 
 // Function to send a ControlPackets
-int send_packet(int tty_fd, ControlPacket packet);
+int send_packet(int tty_fd, Packet packet);
 
-ControlPacket rcv_packet(int tty_fd, uint8_t *buffer, size_t buffer_size);
+Packet rcv_packet(int tty_fd);
 
 #endif // CTRL_PKT_H

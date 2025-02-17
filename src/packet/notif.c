@@ -1,4 +1,4 @@
-#include "packet/notifPacket.h"
+#include "packet/notif.h"
 
 NotificationPacket parse_notif(uint8_t *payload)
 {

@@ -2,8 +2,8 @@
 #define COMMANDS_H
 
 #include "transport/tty.h"
-#include "packet/controlPacket.h"
-#include "packet/notifPacket.h"
+#include "packet/packet.h"
+#include "packet/notif.h"
 
 extern uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 

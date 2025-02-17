@@ -1,4 +1,4 @@
-#include "packet/controlPacket.h"
+#include "packet/packet.h"
 
 void print_packet_header(PacketHeader header)
 {
@@ -6,11 +6,10 @@ void print_packet_header(PacketHeader header)
   printf("    pkt: Packet Boundary Flag: %s\n", pbf_t_s(header.pbf));
 }
 
-ControlPacket create_packet(MessageType mt, PacketBoundaryFlag pbf, GroupIdentifier gid, OpcodeIdentifier oid, uint8_t *payload, uint8_t payload_len)
+Packet create_packet(PacketHeader header, GroupIdentifier gid, OpcodeIdentifier oid, uint8_t *payload, uint8_t payload_len)
 {
-  ControlPacket packet;
-  packet.header.mt = mt;
-  packet.header.pbf = pbf;
+  Packet packet;
+  packet.header = header;
   packet.gid = gid;
   packet.oid = oid;
   packet.payload_len = payload_len;
@@ -19,7 +18,7 @@ ControlPacket create_packet(MessageType mt, PacketBoundaryFlag pbf, GroupIdentif
 }
 
 // Function to send a ControlPackets
-int send_packet(int tty_fd, ControlPacket packet)
+int send_packet(int tty_fd, Packet packet)
 {
   printf("    pkt: Sending packet...\n");
   uint8_t buffer[4 + packet.payload_len];
@@ -44,16 +43,17 @@ int send_packet(int tty_fd, ControlPacket packet)
   return tty_send(tty_fd, buffer, sizeof(buffer));
 }
 
-ControlPacket rcv_packet(int tty_fd, uint8_t *buffer, size_t buffer_size)
+Packet rcv_packet(int tty_fd)
 {
-  ControlPacket packet;
+  Packet packet;
+  uint8_t buffer[MAX_PAYLOAD_SIZE + 4];
 
   printf("    pkt: Receiving response...\n");
-  int bytes_read = tty_rcv(tty_fd, buffer, buffer_size);
+  int bytes_read = tty_rcv(tty_fd, buffer, sizeof(buffer));
   if (bytes_read < 4)
   {
     printf("    pkt: Failed to receive a valid response header\n");
-    packet = create_packet(NOTIF, COMPLETE, 0x0, 0x0, NULL, 0);
+    packet = create_packet(NotifHeader, 0x0, 0x0, NULL, 0);
     return packet; // Failed to receive valid response
   }
 
@@ -65,7 +65,7 @@ ControlPacket rcv_packet(int tty_fd, uint8_t *buffer, size_t buffer_size)
   }
   printf("\n");
 
-  // Translate into ControlPacket
+  // Translate into Packet
   packet.header.mt = (buffer[0] >> 5) & 0b00000111;
   packet.header.pbf = (buffer[0] >> 4) & 0b00000001;
   packet.gid = (buffer[0] & 0b00001111);
