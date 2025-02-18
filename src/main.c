@@ -28,13 +28,13 @@ int main()
 
   // Initialize the TTY port
   printf("Initializing TTY 1...\n");
-  if (tty_init(&tty_fd_1, TTY_PATH_1, BAUD_RATE) != 0)
+  if (tty_init(&tty_fd_1, TTY_PATH_1, BAUD_RATE) < 0)
   {
     return -1; // Initialization failed
   }
 
   printf("Initializing TTY 2...\n");
-  if (tty_init(&tty_fd_2, TTY_PATH_2, BAUD_RATE) != 0)
+  if (tty_init(&tty_fd_2, TTY_PATH_2, BAUD_RATE) < 0)
   {
     return -1; // Initialization failed
   }
@@ -63,14 +63,14 @@ int main()
   sleep(3);
 
   printf("\n -- Resetting TTY 1... -- \n");
-  if (tty_init(&tty_fd_1, TTY_PATH_1, BAUD_RATE) != 0)
+  if (tty_init(&tty_fd_1, TTY_PATH_1, BAUD_RATE) < 0)
   {
     gtfo(tty_fd_1, SESSION_ID);
     return -2; // Initialization failed
   }
 
   printf("\n -- Resetting TTY 2... -- \n");
-  if (tty_init(&tty_fd_2, TTY_PATH_2, BAUD_RATE) != 0)
+  if (tty_init(&tty_fd_2, TTY_PATH_2, BAUD_RATE) < 0)
   {
     gtfo(tty_fd_2, SESSION_ID);
     return -2; // Initialization failed
